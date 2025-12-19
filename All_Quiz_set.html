@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>UPSC Quiz Portal (Auto)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Poppins, Arial;
+      background: #f4f6fb;
+    }
+
+    header {
+      background: #3f51b5;
+      color: #fff;
+      padding: 20px;
+    }
+
+    header h1 {
+      margin: 0
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .subjects,
+    .quizzes {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, .08);
+    }
+
+    .subjects h2,
+    .quizzes h2 {
+      margin: 0;
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .subject-list {
+      max-height: 80vh;
+      overflow: auto;
+    }
+
+    .subject {
+      padding: 15px;
+      cursor: pointer;
+      border-left: 4px solid transparent;
+    }
+
+    .subject:hover {
+      background: #f0f3ff
+    }
+
+    .subject.active {
+      background: #eef2ff;
+      border-left-color: #3f51b5;
+      font-weight: 600;
+    }
+
+    .quiz-list {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .quiz {
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 15px;
+    }
+
+    .quiz h3 {
+      margin: 0 0 10px
+    }
+
+    .quiz button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #3f51b5;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .quiz button:hover {
+      opacity: .9
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px;
+      color: #999;
+    }
+
+    @media(max-width:900px) {
+      .container {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .quiz h3 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      line-height: 1.4;
+
+      /* 🔑 MAIN FIX */
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      white-space: normal;
+
+      /* optional polish */
+      min-height: 42px;
+    }
+
+    /* ANimation */
+    .quiz {
+      transition: all 0.25s ease;
+      background: #ffffff;
+      border: 1px solid #eee;
+    }
+
+    .quiz:hover {
+      transform: translateY(-6px);
+      background: #f3f5ff;
+      /* 🔵 color change */
+      border-color: #3f51b5;
+      box-shadow: 0 14px 30px rgba(63, 81, 181, 0.25);
+    }
+
+
+    .quiz button {
+      transition: all 0.25s ease;
+    }
+
+    .quiz button:hover {
+      background: #303f9f;
+      transform: scale(1.03);
+    }
+
+    .subject {
+      transition: all 0.2s ease;
+    }
+
+    .subject:hover {
+      transform: translateX(4px);
+    }
+
+    .quiz {
+      animation: fadeUp 0.4s ease;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>🧠 UPSC Quiz Portal</h1>
+    <p>Automatically loaded from GitHub</p>
+  </header>
+
+  <div class="container">
+    <div class="subjects">
+      <h2>Subjects</h2>
+      <div class="subject-list" id="subjects"></div>
+    </div>
+
+    <div class="quizzes">
+      <h2 id="quizTitle">Select a Subject</h2>
+      <div class="quiz-list" id="quizzes">
+        <div class="empty">👈 Select subject to load quizzes</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const USER = "DineshIAS96";
+
+    const subjectsEl = document.getElementById("subjects");
+    const quizzesEl = document.getElementById("quizzes");
+    const quizTitle = document.getElementById("quizTitle");
+
+    // ❌ ये repos बिल्कुल नहीं दिखेंगे
+    const HIDDEN_REPOS = ["form-animation"];
+
+    // ⭐ ये अलग list में जाएँगे
+    const SPECIAL_REPOS = ["CSS", "QuizApp", "NCERTJS", "Vocabjs", "autho_quiz"];
+
+
+    let subjectsData = [];
+    let specialData = [];
+
+    // 🔹 Load repositories
+    async function loadSubjects() {
+      const res = await fetch(`https://api.github.com/users/${USER}/repos?per_page=100`);
+      const repos = await res.json();
+
+      repos.forEach(r => {
+        const name = r.name;
+
+        // ❌ जिनमें _JS है → skip
+        if (name.includes("_JS")) return;
+
+        // ❌ hidden repos skip
+        if (HIDDEN_REPOS.includes(name)) return;
+
+        // ⭐ special repos
+        // ❌ special repos भी hide
+        if (SPECIAL_REPOS.includes(name)) return;
+
+        // बाकी normal subjects
+        subjectsData.push(name);
+
+      });
+
+      renderSubjects();
+    }
+
+    // 🔹 Render Subjects + Special list
+    function renderSubjects() {
+      subjectsEl.innerHTML = "";
+
+      // 📘 Normal subjects
+      subjectsData.forEach(name => {
+        createSubject(name, false);
+      });
+    }
+
+    function createSubject(name, isSpecial) {
+      const div = document.createElement("div");
+      div.className = "subject";
+      div.innerHTML = `${isSpecial ? "⭐" : "📘"} ${name.replace(/_/g, " ")}`;
+      div.onclick = () => selectSubject(name, div);
+      subjectsEl.appendChild(div);
+    }
+
+    // 🔹 Load quizzes
+    async function selectSubject(repo, el) {
+      document.querySelectorAll(".subject").forEach(s => s.classList.remove("active"));
+      el.classList.add("active");
+
+      quizTitle.innerText = repo.replace(/_/g, " ");
+      quizzesEl.innerHTML = "Loading...";
+
+      const res = await fetch(`https://api.github.com/repos/${USER}/${repo}/contents`);
+      const files = await res.json();
+
+      const htmlFiles = files.filter(f => f.name.endsWith(".html"));
+
+      if (htmlFiles.length === 0) {
+        quizzesEl.innerHTML = `<div class="empty">No quizzes found</div>`;
+        return;
+      }
+
+      quizzesEl.innerHTML = "";
+      htmlFiles.forEach(f => {
+        const q = document.createElement("div");
+        q.className = "quiz";
+        q.innerHTML = `
+        <h3>${f.name.replace(".html", "").replace(/_/g, " ")}</h3>
+        <button onclick="window.open(
+          'https://${USER}.github.io/${repo}/${f.name}',
+          '_blank'
+        )">
+          ▶ Start Quiz
+        </button>
+      `;
+        quizzesEl.appendChild(q);
+      });
+    }
+
+    loadSubjects();
+  </script>
+
+</body>
+
+</html>
