@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>UPSC Quiz Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Poppins, Arial;
+            background: #f4f6fb
+        }
+
+        header {
+            background: #3f51b5;
+            color: #fff;
+            padding: 20px
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            padding: 20px
+        }
+
+        .subjects,
+        .quizzes {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .08)
+        }
+
+        .subjects h2,
+        .quizzes h2 {
+            margin: 0;
+            padding: 15px;
+            border-bottom: 1px solid #eee
+        }
+
+        .subject-list {
+            max-height: 75vh;
+            overflow: auto
+        }
+
+        .subject {
+            padding: 14px;
+            cursor: pointer;
+            transition: .2s
+        }
+
+        .subject:hover {
+            background: #f0f3ff;
+            transform: translateX(4px)
+        }
+
+        .subject.active {
+            background: #eef2ff;
+            border-left: 4px solid #3f51b5;
+            font-weight: 600
+        }
+
+        .count {
+            float: right;
+            background: #e8ebff;
+            color: #3f51b5;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600
+        }
+
+        .new-tag {
+            background: #ff5252;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            margin-left: 6px
+        }
+
+        .quiz-list {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px
+        }
+
+        .quiz {
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 15px;
+            transition: .25s;
+            background: #fff;
+            animation: fadeUp .4s ease
+        }
+
+        .quiz:hover {
+            transform: translateY(-6px);
+            background: #f3f5ff;
+            border-color: #3f51b5;
+            box-shadow: 0 14px 30px rgba(63, 81, 181, .25)
+        }
+
+        .quiz.latest {
+            border: 2px solid #ff5252;
+            background: #fff5f5
+        }
+
+        .quiz h3 {
+            font-size: 15px;
+            line-height: 1.4;
+            min-height: 42px;
+            word-break: break-word
+        }
+
+        .quiz button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #3f51b5;
+            color: #fff;
+            cursor: pointer
+        }
+
+        .quiz button:hover {
+            background: #303f9f;
+            transform: scale(1.03)
+        }
+
+        input,
+        select {
+            margin: 10px;
+            border: 1px solid #ddd;
+            padding: 8px;
+            border-radius: 8px;
+            width: 90%
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>🧠 UPSC Quiz Portal</h1>
+        <p>Automatically loaded from GitHub</p>
+    </header>
+
+    <div class="container">
+
+        <!-- SUBJECT PANEL -->
+        <div class="subjects">
+            <h2>Subjects</h2>
+
+            <input id="subjectSearch" placeholder="🔍 Search subject">
+            <select id="subjectFilter">
+                <option value="az">A–Z</option>
+                <option value="new">Latest</option>
+            </select>
+
+            <div class="subject-list" id="subjects"></div>
+        </div>
+
+        <!-- QUIZ PANEL -->
+        <div class="quizzes">
+            <h2 id="quizTitle">Select a Subject</h2>
+
+            <input id="quizSearch" placeholder="🔍 Search quiz">
+            <select id="quizFilter">
+                <option value="latest">Latest First</option>
+                <option value="az">A–Z</option>
+            </select>
+
+            <div class="quiz-list" id="quizzes">
+                <div style="padding:40px;color:#999">👈 Select subject</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const USER = "DineshIAS96";
+        const HIDDEN = ["form-animation"];
+        const SPECIAL = ["CSS", "QuizApp", "NCERTJS", "Vocabjs", "autho_quiz"];
+
+        const subjectsEl = document.getElementById("subjects");
+        const quizzesEl = document.getElementById("quizzes");
+        const quizTitle = document.getElementById("quizTitle");
+
+        let subjects = [];
+
+        // 🔹 helper → REAL file updated time
+        async function getFileUpdated(repo, file) {
+            const res = await fetch(
+                `https://api.github.com/repos/${USER}/${repo}/commits?path=${file}&per_page=1`
+            );
+            const data = await res.json();
+            return new Date(data[0].commit.committer.date).getTime();
+        }
+
+        // 🔹 load subjects
+        async function loadSubjects() {
+            const res = await fetch(`https://api.github.com/users/${USER}/repos?per_page=100`);
+            const data = await res.json();
+
+            subjects = data.filter(r =>
+                !r.name.includes("_JS") &&
+                !HIDDEN.includes(r.name) &&
+                !SPECIAL.includes(r.name)
+            ).map(r => ({
+                name: r.name,
+                isNew: (Date.now() - new Date(r.updated_at)) < 86400000
+            }));
+
+            renderSubjects();
+        }
+
+        // 🔹 render subjects
+        function renderSubjects() {
+            subjectsEl.innerHTML = "";
+            subjects.forEach(s => {
+                const div = document.createElement("div");
+                div.className = "subject";
+                div.innerHTML = `📘 ${s.name.replace(/_/g, " ")}
+${s.isNew ? '<span class="new-tag">NEW</span>' : ''}
+<span class="count">…</span>`;
+                div.onclick = () => selectSubject(s.name, div);
+                subjectsEl.appendChild(div);
+            });
+        }
+
+        // 🔹 load quizzes (REAL latest)
+        async function selectSubject(repo, el) {
+            document.querySelectorAll(".subject").forEach(s => s.classList.remove("active"));
+            el.classList.add("active");
+            quizTitle.innerText = repo.replace(/_/g, " ");
+            quizzesEl.innerHTML = "Loading...";
+
+            const res = await fetch(`https://api.github.com/repos/${USER}/${repo}/contents`);
+            let files = (await res.json()).filter(f => f.name.endsWith(".html"));
+
+            el.querySelector(".count").innerText = files.length;
+
+            // 🔥 get real updated time
+            for (let f of files) {
+                f.updatedTime = await getFileUpdated(repo, f.name);
+            }
+
+            // sort by real upload time
+            files.sort((a, b) => b.updatedTime - a.updatedTime);
+
+            quizzesEl.innerHTML = "";
+            files.forEach((f, i) => {
+                const latest = i === 0;
+                const q = document.createElement("div");
+                q.className = "quiz" + (latest ? " latest" : "");
+                q.innerHTML = `
+<h3>${f.name.replace(".html", "").replace(/_/g, " ")}
+${latest ? '<span class="new-tag">NEW</span>' : ''}</h3>
+<button onclick="window.open(
+'https://${USER}.github.io/${repo}/${f.name}','_blank'
+)">▶ Start Quiz</button>`;
+                quizzesEl.appendChild(q);
+            });
+        }
+
+        // 🔍 search & filter
+        subjectSearch.oninput = e => {
+            document.querySelectorAll(".subject").forEach(s => {
+                s.style.display = s.innerText.toLowerCase().includes(e.target.value.toLowerCase()) ? "" : "none";
+            });
+        };
+
+        subjectFilter.onchange = e => {
+            subjects.sort((a, b) =>
+                e.target.value == "new" ? b.isNew - a.isNew : a.name.localeCompare(b.name));
+            renderSubjects();
+        };
+
+        quizSearch.oninput = e => {
+            document.querySelectorAll(".quiz").forEach(q => {
+                q.style.display = q.innerText.toLowerCase().includes(e.target.value.toLowerCase()) ? "" : "none";
+            });
+        };
+
+        quizFilter.onchange = e => {
+            const cards = [...document.querySelectorAll(".quiz")];
+            cards.sort((a, b) =>
+                e.target.value == "az"
+                    ? a.innerText.localeCompare(b.innerText)
+                    : b.classList.contains("latest") - a.classList.contains("latest")
+            );
+            cards.forEach(c => quizzesEl.appendChild(c));
+        };
+
+        loadSubjects();
+    </script>
+
+</body>
+
+</html>
